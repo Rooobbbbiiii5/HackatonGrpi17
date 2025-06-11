@@ -1,2 +1,2 @@
 # HackatonGrpi17
-Hackaton for BuildingBloCS June 25
+Hackaton project or BuildingBloCS June 2025
