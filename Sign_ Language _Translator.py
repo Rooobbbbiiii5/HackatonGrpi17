@@ -34,18 +34,19 @@ class VideoProcessor(VideoProcessorBase):
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
         img_resized = cv2.resize(img, (224, 224), interpolation=cv2.INTER_AREA)
-        # Flip the image horizontally (mirror/laterally inverted)
+        # If your model was NOT trained on flipped images, comment out the next line
         img_flipped = cv2.flip(img_resized, 1)
-        img_norm = (np.asarray(img_resized, dtype=np.float32).reshape(1, 224, 224, 3) / 127.5) - 1
+        img_norm = (np.asarray(img_flipped, dtype=np.float32).reshape(1, 224, 224, 3) / 127.5) - 1
         try:
             prediction = model.predict(img_norm)
             index = int(np.argmax(prediction))
             class_name = class_names[index]
             confidence_score = float(prediction[0][index])
+            print(f"Prediction: {prediction}, Index: {index}, Class: {class_name}, Confidence: {confidence_score}")
         except Exception as e:
             class_name = "Error"
             confidence_score = 0.0
-        # Draw border and label on the flipped image
+            print(f"Prediction error: {e}")
         img_with_border = cv2.copyMakeBorder(
             img_flipped, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 255, 0)
         )
@@ -140,8 +141,6 @@ def Text_to_sign():
             st.error("Please enter a word to submit.")
 
 def Sign_to_text():
-    cap = cv2.VideoCapture(0)
-
     st.title("Sign Language Recognition")
     st.divider()
     st.markdown("This is the sign language recognition page. Here you can recognize sign language from a video feed using Machine Learning.")
@@ -203,5 +202,4 @@ pages = {
 
 
 
-pg = st.navigation(pages)
-pg.run()
+pg = st.navigation(pag
