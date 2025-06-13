@@ -202,4 +202,5 @@ pages = {
 
 
 
-pg = st.navigation(pag
+pg = st.navigation(pages)
+pg.run()
