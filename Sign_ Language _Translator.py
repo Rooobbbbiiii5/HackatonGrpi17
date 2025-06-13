@@ -134,7 +134,7 @@ def Text_to_sign():
     if st.button("Submit"):
         if want_to_add is not None and want_to_add.isalpha():
             with st.spinner("Submitting your request..."):
-                with open ("additional_words.txt", "a") as file:
+                with open ("signadditons.txt", "a") as file:
                     file.write(f"{want_to_add}\n")
                 st.success(f"Your request for adding '{want_to_add}' has been submitted! Thank you for your contribution!")
         else:
