@@ -8,59 +8,17 @@ import google.genai as genai
 from keras.models import load_model
 import cv2
 import numpy as np
-MODEL_PATH = r"C:\Users\fluff\Desktop\buildingblocs\hackathon_project\keras_model_fixed.h5"
-LABELS_PATH = r"C:\Users\fluff\Desktop\buildingblocs\hackathon_project\labels.txt"
+
+
+frame_counter = 0
+MODEL_PATH = r"C:\Users\Jaslyn Tew\Downloads\keras_model_fixed.h5"
+LABELS_PATH = r"C:\Users\Jaslyn Tew\Downloads\labels.txt" 
+ADDITION_PATH = r"C:\Users\Jaslyn Tew\Documents\buildingblocs\signadditions.txt"
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
-sign_directory = r"C:\Users\fluff\Desktop\buildingblocs\hackathon_project\sign_images"
-try:
-    model = load_model(MODEL_PATH, compile=False)
-except Exception as e:
-    st.error(f"Failed to load model: {e}")
-    st.stop()
+sign_directory = r"C:\Users\Jaslyn Tew\Downloads\sign_images-20250614T012158Z-1-001\sign_images"
 
-try:
-    with open(LABELS_PATH, "r") as f:
-        class_names = [line.strip() for line in f if line.strip()]
-    if not class_names:
-        st.error("No class names found in labels.txt.")
-        st.stop()
-except Exception as e:
-    st.error(f"Failed to load labels: {e}")
-    st.stop()
-
-class VideoProcessor(VideoProcessorBase):
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        img_resized = cv2.resize(img, (224, 224), interpolation=cv2.INTER_AREA)
-        # If your model was NOT trained on flipped images, comment out the next line
-        img_flipped = cv2.flip(img_resized, 1)
-        img_norm = (np.asarray(img_flipped, dtype=np.float32).reshape(1, 224, 224, 3) / 127.5) - 1
-        try:
-            prediction = model.predict(img_norm)
-            index = int(np.argmax(prediction))
-            class_name = class_names[index]
-            confidence_score = float(prediction[0][index])
-            print(f"Prediction: {prediction}, Index: {index}, Class: {class_name}, Confidence: {confidence_score}")
-        except Exception as e:
-            class_name = "Error"
-            confidence_score = 0.0
-            print(f"Prediction error: {e}")
-        img_with_border = cv2.copyMakeBorder(
-            img_flipped, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 255, 0)
-        )
-        cv2.putText(
-            img_with_border,
-            f"{class_name}: {confidence_score*100:.1f}%",
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (255, 0, 0),
-            2,
-            cv2.LINE_AA,
-        )
-        return av.VideoFrame.from_ndarray(img_with_border, format="bgr24")
 
 signlist = []
 image_list = []
@@ -107,7 +65,6 @@ def Text_to_sign():
     
     if st.session_state.translating and not retranslate:
         with st.spinner():
-            time.sleep(2)
             process1 = to_be_translated.split()
             for i in process1:
                 if not i.isalpha():
@@ -134,17 +91,69 @@ def Text_to_sign():
     if st.button("Submit"):
         if want_to_add is not None and want_to_add.isalpha():
             with st.spinner("Submitting your request..."):
-                with open ("signadditons.txt", "a") as file:
-                    file.write(f"{want_to_add}\n")
+                with open (ADDITION_PATH, "a") as file:
+                    if want_to_add not in open(ADDITION_PATH).read():
+                        file.write(f"{want_to_add}\n")
+                    print(f"Added '{want_to_add}' to sign additions file.")
                 st.success(f"Your request for adding '{want_to_add}' has been submitted! Thank you for your contribution!")
         else:
             st.error("Please enter a word to submit.")
 
 def Sign_to_text():
+    try:
+        model = load_model(MODEL_PATH, compile=False)
+    except Exception as e:
+        st.error(f"Failed to load model: {e}")
+        st.stop()
+
+    try:
+        with open(LABELS_PATH, "r") as f:
+            class_names = [line.strip() for line in f if line.strip()]
+        if not class_names:
+            st.error("No class names found in labels.txt.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Failed to load labels: {e}")
+        st.stop()
+
+    class VideoProcessor(VideoProcessorBase):
+        def recv(self, frame):
+            global frame_counter
+            frame_counter += 1
+            print(f"Frame counter: {frame_counter}")
+            img = frame.to_ndarray(format="bgr24")
+            img_resized = cv2.resize(img, (224, 224), interpolation=cv2.INTER_AREA)
+            # If your model was NOT trained on flipped images, comment out the next line
+            img_flipped = cv2.flip(img_resized, 1)
+            img_norm = (np.asarray(img_flipped, dtype=np.float32).reshape(1, 224, 224, 3) / 127.5) - 1
+            try:
+                prediction = model.predict(img_norm)
+                index = int(np.argmax(prediction))
+                class_name = class_names[index]
+                confidence_score = float(prediction[0][index])
+                print(f"Prediction: {prediction}, Index: {index}, Class: {class_name}, Confidence: {confidence_score}")
+            except Exception as e:
+                class_name = "Error"
+                confidence_score = 0.0
+                print(f"Prediction error: {e}")
+            img_with_border = cv2.copyMakeBorder(
+                img_flipped, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 255, 0)
+            )
+            cv2.putText(
+                img_with_border,
+                f"{class_name}: {confidence_score*100:.1f}%",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (255, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
+            return av.VideoFrame.from_ndarray(img_with_border, format="bgr24")
     st.title("Sign Language Recognition")
     st.divider()
     st.markdown("This is the sign language recognition page. Here you can recognize sign language from a video feed using Machine Learning.")
-    st.title("Webcam Classifier with Inverted Image and Border")
+    st.title("Webcam Classifier with Border")
     webrtc_streamer(
         key="example",
         video_processor_factory=VideoProcessor,
